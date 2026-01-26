@@ -65,3 +65,6 @@ dmypy.json
 
 # MacOS
 .DS_Store
+
+# vllm environment
+.vllm/
