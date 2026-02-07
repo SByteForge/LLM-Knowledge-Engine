@@ -7,10 +7,12 @@ import ollama
 
 app = FastAPI()
 conversation_store = {}
+cache={}
 
 class GenerateRequest(BaseModel):
     session_id: str
     prompt: str
+    question: str
 
 @app.get("/")
 def health_check():
@@ -88,3 +90,35 @@ def generate_stream(request: GenerateRequest):
         stream_llm_response(request.prompt),
         media_type="text/plain"
         )
+    
+@app.get("/ask/")
+def ask(question: str):
+    
+    #check cache first
+    if question in cache:
+        return {
+            "response": cache[question],
+            "cached": True
+        }
+
+    # If not cached, generate a new answer
+    response = ollama.chat(
+        model="mistral:latest",
+        messages=[
+            {"role": "user", "content": question}
+        ]
+    )
+    
+    
+    # Save to cache
+    cache[question] = response
+
+    answer = response["message"]["content"]
+
+    # Store the answer in cache
+    cache[question] = answer
+
+    return {
+        "response": answer,
+        "cached": False
+    }
