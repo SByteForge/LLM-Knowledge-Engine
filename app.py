@@ -6,8 +6,10 @@ import uuid
 import ollama
 
 app = FastAPI()
+conversation_store = {}
 
 class GenerateRequest(BaseModel):
+    session_id: str
     prompt: str
 
 @app.get("/")
@@ -37,18 +39,35 @@ def hello():
 
 @app.post("/generate/")
 def generate(request: GenerateRequest):
-    start_time = time.time()
     
+    if request.session_id not in conversation_store:
+        conversation_store[request.session_id] = []
+    
+    history = conversation_store[request.session_id]
+    
+    history.append({
+        "role": "user",
+        "content": request.prompt
+        })
+    
+    start_time = time.time()
+
     response = ollama.chat(
         model="mistral:latest",
-        messages=[{"role": "user", "content": request.prompt}]
+        messages=history
     )
     
+    reply = response["message"]["content"]
+    
+    history.append({
+        "role": "assistant",
+        "content": reply
+        })
+    
     return {
-        "request_id": str(uuid.uuid4()),
-        "prompt": request.prompt,
-        "response": response["message"]["content"],
-        "latency_ms": round((time.time() - start_time) * 1000, 2)
+        
+        "session_id": request.session_id,
+        "response": reply
     }
     
     
